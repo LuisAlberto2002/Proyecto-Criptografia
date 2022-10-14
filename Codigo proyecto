@@ -1,4 +1,4 @@
-
+//Bibliotecas necesarias para ejecucion
 #include <iostream>
 #include <fstream>
 #include "Conio.h"
@@ -8,7 +8,6 @@
 #include <string.h>
 #include <iomanip>
 using namespace std;
-
 int main(){
     //variables necesarias para ejecucion
     unsigned char* key;
@@ -19,15 +18,15 @@ int main(){
         return 1;
     }
 
-    //Inicio del menu
-// Variables necesarias para ejecucion
+    
+    // Variables necesarias para ejecucion pero que requeiren confirmaciond e lipsodium
     key = (unsigned char*)malloc(crypto_stream_chacha20_KEYBYTES);
     nounce = (unsigned char*)malloc(crypto_stream_chacha20_NONCEBYTES);
     randombytes_buf(nounce, crypto_stream_chacha20_NONCEBYTES);
     cifrado = (unsigned char*)malloc(crypto_stream_chacha20_NONCEBYTES);
     unsigned char hash[crypto_generichash_BYTES];
     int mlen;
-    //lectura de documento
+    //Variable para la lectura de documento, inicio de sesion y firma del documento
     string temp;
     string temp2;
     string texto;
@@ -44,7 +43,8 @@ int main(){
     const char* llave;
     const char* informacion;
     unsigned char MAC[crypto_auth_hmacsha512_BYTES];
-
+    //Inicio del menu
+    //Comprobacion de usuario y contrasena
     printf("Ingrese su usuario: ");
     cin >> compro_usuario;
     if (compro_usuario._Equal(usuario)) {
@@ -52,6 +52,7 @@ int main(){
         scanf_s("%d",&compro_contrasena);
         if (compro_contrasena == contrasena) {
             int eleccion = 0;
+            //Seleccion de opciones para el usuario
             while (eleccion != 9) {
                 printf("\n!!!Menu!!!\n\n");
                 printf("\n1.- Ingresar/modificar direccion de guardado");
@@ -75,6 +76,9 @@ int main(){
                 }
                 //Eleccion 2 mostrar direccion de carpeta
                 else if (eleccion == 2) {
+                    //En caso de que no exista una direccion te lanzara un mensaje de aviso
+                    //Es recomendable ejecutar esta opcion si usas el programa mucho tiempo para 
+                    //Asegurarte de que la capeta sea la correcta.
                     if (direccion == "") {
                         printf("\n!!!No existe ninguna direccion de guardado!!!\n\n");
                     }
@@ -84,6 +88,7 @@ int main(){
                 }
                 //Eleccion 3 generar llave
                 else if (eleccion == 3) {
+                    //Genera la llave de forma aleatoria, genera un documento txt y guarda la llave ahi.
                     randombytes_buf(key, crypto_stream_chacha20_KEYBYTES);
                     ofstream file;
                     cout << "\nIngrese nombre del documento: ";
@@ -95,11 +100,13 @@ int main(){
                     printf("\n!!!Llave generada exitosamente!!!\n");
                 }
                 //Eleccion 4 recuperar llave
-
                 else if (eleccion == 4) {
-                    
+                    //Ingresas el nombre del documento donde se encuentra la llave
                     cout << "\nIngrese nombre del documento: ";
                     cin >> documento;
+                    //Para que esto funcione primero debiste ingresar una direccion de carpeta
+                    //Ya que mezcla en un solo string la direccion de la carpeta y el nombre del archivo para
+                    //realizar la busqueda. 
                     ubicacion = direccion + documento;
                     string nombreArchivo = (ubicacion);
                     ifstream contrasena_recu (nombreArchivo.c_str());
@@ -108,29 +115,38 @@ int main(){
                         texto2 += " " + temp2;
                     }
                     contrasena_recu.close();
+                    //Respues de leer el documento guarda la llave en una variable distinta
                     llave = texto2.c_str();
-                    printf("\nLlave: %x\n\n", llave);
+                    //despues realizamos un cast para guardar la llave recuperada en nuestro apuntador key.
+                    key =(unsigned char*) llave;
+                    printf("\nLlave: %x\n\n", key);
                     //cout << "\nUbicacion del archivo: " << ubicacion << "\n";
 
                 }
                 //Opcion 5 Cifrar documento
                 else if (eleccion == 5) {
+                    //Ingresamos el nombre del documento a cifrar
                     cout << "\nIngrese nombre del documento: ";
                     cin >> documento;
                     ubicacion = direccion + documento;
                     string nombreArchivo = (ubicacion);
+                    //realiza lectura de documento
                     ifstream archivo(nombreArchivo.c_str());
                     while (!archivo.eof()) {
                         archivo >> temp;
                         texto += " " + temp;
                     }
                     archivo.close();
+                    //Estructura char para convertir string en un tipo de variable aceptable para la funcion.
                     informacion = texto.c_str();
                     const unsigned char* texto3;
                     texto3 = (const unsigned char*)informacion;
+                    //Generacion del valor del apuntador nounce
                     randombytes_buf(nounce, crypto_stream_chacha20_NONCEBYTES);
                     mlen = sizeof(texto3);
+                    //Uso de la funcion de cifrado chacha20 de lipsodium
                     crypto_stream_chacha20_xor(cifrado, texto3, mlen, nounce, key);
+                    //Creacion de nuevo documento donde almacenar el texto cifrado.
                     ofstream file;
                     cout << "\nIngrese nombre del documento cifrado: ";
                     cin >> documento;
@@ -143,21 +159,26 @@ int main(){
 
                 }//Opcion 6 Decifrado de archivo
                 else if (eleccion == 6) {
+                    //Ingresar nombre del documento cifrado
                     cout << "\nIngrese nombre del documento cifrado: ";
                     cin >> documento;
                     ubicacion = direccion + documento;
                     string nombreArchivo = (ubicacion);
+                    //Inicia la busqueda y lectura del documento
                     ifstream archivo(nombreArchivo.c_str());
                     while (!archivo.eof()) {
                         archivo >> temp;
                         texto += " " + temp;
                     }
                     archivo.close();
+                    //Estructura char
                     informacion = texto.c_str();
                     unsigned char* texto3;
                     texto3 = (unsigned char*) (informacion);
                     mlen = sizeof(texto3);
+                    //Llamado a la funcion chacha20 para decifrar el mensaje
                     crypto_stream_chacha20_xor(texto3, cifrado, mlen, nounce, key);
+                    //Generacion del documento donde guardar el mensaje decifrado
                     ofstream file;
                     cout << "\nIngrese nombre del documento decifrado: ";
                     cin >> documento;
@@ -166,12 +187,13 @@ int main(){
                     file << texto3;
                     file.close();
                     printf("\n!!!Documento decifrado!!!\n");
-                }//Opcion 7 Firma del documento
+                }//Opcion 7 Generar Firma del documento
                 else if (eleccion == 7) {
-
+                    //Ingresar nombre del documento donde almacenar la firma
                     ofstream file;
                     cout << "\nIngrese nombre del documento de la firma: ";
                     cin >> documento;
+                    //Iniciar variables y funciones para crear nuestra firma.
                     unsigned char client_pk[crypto_kx_PUBLICKEYBYTES], client_sk[crypto_kx_SECRETKEYBYTES];
                     unsigned char client_rx[crypto_kx_SESSIONKEYBYTES], client_tx[crypto_kx_SESSIONKEYBYTES];
                     crypto_kx_keypair(client_pk, client_sk);
@@ -193,10 +215,10 @@ int main(){
                         ID[i] = reto[i - 14];
                     }
                     std::cout << std::endl;
-                    //unsigned char MAC[crypto_auth_hmacsha512_BYTES];
+                    //Llamar la funcion HMACsha512 para generar nuestra firma electronica
                     crypto_auth_hmacsha512(MAC, ID, (sizeof(texto)+14), client_tx);
                     cout <<"\nFirma: " << MAC<<"\n";  
-                 
+                    //Generacion del documento donde guardar la firma.
                     ubicacion = direccion + documento;
                     file.open(ubicacion);
                     file << MAC;
@@ -204,6 +226,10 @@ int main(){
 
                 }//Opcion 8 Verificacion firma de documento.
                 else if (eleccion == 8) {
+                    //Verificacion de la firma electronica. 
+                    //Debido a ciertos contratiempos, no me fue posible contruir la parte del codigo
+                    //para extraer la firma del documento. Por lo esta opcion funcionara unicamente con archivos generados
+                    //por el programa en su momento.
                 unsigned char client_pk[crypto_kx_PUBLICKEYBYTES], client_sk[crypto_kx_SECRETKEYBYTES];
                 unsigned char client_rx[crypto_kx_SESSIONKEYBYTES], client_tx[crypto_kx_SESSIONKEYBYTES];
                 crypto_kx_keypair(client_pk, client_sk);
@@ -240,7 +266,7 @@ int main(){
                 }
                 else {
                     cout << "\n\n!!Que tenga un buen dia\n\n";
-                }
+                }//Fin del menu
             }
         }
         else {
@@ -253,4 +279,4 @@ int main(){
         return -1;
     }
 
-}
+}//Fin del codigo
