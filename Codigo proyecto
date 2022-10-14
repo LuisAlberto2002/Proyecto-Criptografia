@@ -1,0 +1,256 @@
+
+#include <iostream>
+#include <fstream>
+#include "Conio.h"
+#include <stdio.h>
+#include "sodium.h"
+#include <vector>
+#include <string.h>
+#include <iomanip>
+using namespace std;
+
+int main(){
+    //variables necesarias para ejecucion
+    unsigned char* key;
+    unsigned char* nounce;
+    unsigned char* cifrado;
+    //Comprobar que libsodium este disponible
+    if (sodium_init() == -1) {
+        return 1;
+    }
+
+    //Inicio del menu
+// Variables necesarias para ejecucion
+    key = (unsigned char*)malloc(crypto_stream_chacha20_KEYBYTES);
+    nounce = (unsigned char*)malloc(crypto_stream_chacha20_NONCEBYTES);
+    randombytes_buf(nounce, crypto_stream_chacha20_NONCEBYTES);
+    cifrado = (unsigned char*)malloc(crypto_stream_chacha20_NONCEBYTES);
+    unsigned char hash[crypto_generichash_BYTES];
+    int mlen;
+    //lectura de documento
+    string temp;
+    string temp2;
+    string texto;
+    string texto2;
+    unsigned char* reto = (unsigned char*)(texto.c_str());
+    unsigned char ID[(sizeof(texto) + 14)] = "rendon.a.la@gmail.com";
+    string usuario = "Luis";
+    int contrasena = 3321;
+    string compro_usuario;
+    int compro_contrasena;
+    string direccion="";
+    string documento;
+    string ubicacion;
+    const char* llave;
+    const char* informacion;
+    unsigned char MAC[crypto_auth_hmacsha512_BYTES];
+
+    printf("Ingrese su usuario: ");
+    cin >> compro_usuario;
+    if (compro_usuario._Equal(usuario)) {
+        printf("Ingrese su contrasena: ");
+        scanf_s("%d",&compro_contrasena);
+        if (compro_contrasena == contrasena) {
+            int eleccion = 0;
+            while (eleccion != 9) {
+                printf("\n!!!Menu!!!\n\n");
+                printf("\n1.- Ingresar/modificar direccion de guardado");
+                printf("\n2.- Mostrar direccion de guardado");
+                printf("\n3.- Generar llave");
+                printf("\n4.- Recuperar llave");
+                printf("\n5.- Cifrar");
+                printf("\n6.- Decifrar");
+                printf("\n7.- firma");
+                printf("\n8.- Verificar firma");
+                printf("\n9.- Salir\n\n");
+                printf("Que desea realizar?: ");
+                scanf_s("%d", &eleccion);
+
+                //Eleccion 1 agregar direccion de carpeta
+                if (eleccion == 1) {
+                    printf("\nIngrese direccion de guardado: ");
+                    cin >> direccion;
+                    printf("\n !!!Direccion guardada exitosamente!!!\n\n");
+
+                }
+                //Eleccion 2 mostrar direccion de carpeta
+                else if (eleccion == 2) {
+                    if (direccion == "") {
+                        printf("\n!!!No existe ninguna direccion de guardado!!!\n\n");
+                    }
+                    else {
+                    cout <<"\nDireccion de guardado: " << direccion<<"\n";
+                    }
+                }
+                //Eleccion 3 generar llave
+                else if (eleccion == 3) {
+                    randombytes_buf(key, crypto_stream_chacha20_KEYBYTES);
+                    ofstream file;
+                    cout << "\nIngrese nombre del documento: ";
+                    cin >> documento;
+                    ubicacion = direccion + documento;
+                    file.open(ubicacion);
+                    file << key;
+                    file.close();
+                    printf("\n!!!Llave generada exitosamente!!!\n");
+                }
+                //Eleccion 4 recuperar llave
+
+                else if (eleccion == 4) {
+                    
+                    cout << "\nIngrese nombre del documento: ";
+                    cin >> documento;
+                    ubicacion = direccion + documento;
+                    string nombreArchivo = (ubicacion);
+                    ifstream contrasena_recu (nombreArchivo.c_str());
+                    while (!contrasena_recu.eof()) {
+                        contrasena_recu >> temp2;
+                        texto2 += " " + temp2;
+                    }
+                    contrasena_recu.close();
+                    llave = texto2.c_str();
+                    printf("\nLlave: %x\n\n", llave);
+                    //cout << "\nUbicacion del archivo: " << ubicacion << "\n";
+
+                }
+                //Opcion 5 Cifrar documento
+                else if (eleccion == 5) {
+                    cout << "\nIngrese nombre del documento: ";
+                    cin >> documento;
+                    ubicacion = direccion + documento;
+                    string nombreArchivo = (ubicacion);
+                    ifstream archivo(nombreArchivo.c_str());
+                    while (!archivo.eof()) {
+                        archivo >> temp;
+                        texto += " " + temp;
+                    }
+                    archivo.close();
+                    informacion = texto.c_str();
+                    const unsigned char* texto3;
+                    texto3 = (const unsigned char*)informacion;
+                    randombytes_buf(nounce, crypto_stream_chacha20_NONCEBYTES);
+                    mlen = sizeof(texto3);
+                    crypto_stream_chacha20_xor(cifrado, texto3, mlen, nounce, key);
+                    ofstream file;
+                    cout << "\nIngrese nombre del documento cifrado: ";
+                    cin >> documento;
+                    ubicacion = direccion + documento;
+                    file.open(ubicacion);
+                    file << cifrado;
+                    file.close();
+
+                    printf("\nDocumento cifrado y guardado\n");
+
+                }//Opcion 6 Decifrado de archivo
+                else if (eleccion == 6) {
+                    cout << "\nIngrese nombre del documento cifrado: ";
+                    cin >> documento;
+                    ubicacion = direccion + documento;
+                    string nombreArchivo = (ubicacion);
+                    ifstream archivo(nombreArchivo.c_str());
+                    while (!archivo.eof()) {
+                        archivo >> temp;
+                        texto += " " + temp;
+                    }
+                    archivo.close();
+                    informacion = texto.c_str();
+                    unsigned char* texto3;
+                    texto3 = (unsigned char*) (informacion);
+                    mlen = sizeof(texto3);
+                    crypto_stream_chacha20_xor(texto3, cifrado, mlen, nounce, key);
+                    ofstream file;
+                    cout << "\nIngrese nombre del documento decifrado: ";
+                    cin >> documento;
+                    ubicacion = direccion + documento;
+                    file.open(ubicacion);
+                    file << texto3;
+                    file.close();
+                    printf("\n!!!Documento decifrado!!!\n");
+                }//Opcion 7 Firma del documento
+                else if (eleccion == 7) {
+
+                    ofstream file;
+                    cout << "\nIngrese nombre del documento de la firma: ";
+                    cin >> documento;
+                    unsigned char client_pk[crypto_kx_PUBLICKEYBYTES], client_sk[crypto_kx_SECRETKEYBYTES];
+                    unsigned char client_rx[crypto_kx_SESSIONKEYBYTES], client_tx[crypto_kx_SESSIONKEYBYTES];
+                    crypto_kx_keypair(client_pk, client_sk);
+
+                    unsigned char server_pk[crypto_kx_PUBLICKEYBYTES], server_sk[crypto_kx_SECRETKEYBYTES];
+                    unsigned char server_rx[crypto_kx_SESSIONKEYBYTES], server_tx[crypto_kx_SESSIONKEYBYTES];
+                    crypto_kx_keypair(server_pk, server_sk);
+
+                    if (crypto_kx_client_session_keys(client_rx, client_tx, client_pk, client_sk, server_pk) != 0) {
+                         exit(1);
+                    }
+
+                    if (crypto_kx_client_session_keys(server_rx, server_tx, server_pk, server_sk, client_pk) != 0) {
+                        exit(1);
+                    }
+
+                    
+                    for (int i = 14; i < sizeof(texto); i++) {
+                        ID[i] = reto[i - 14];
+                    }
+                    std::cout << std::endl;
+                    //unsigned char MAC[crypto_auth_hmacsha512_BYTES];
+                    crypto_auth_hmacsha512(MAC, ID, (sizeof(texto)+14), client_tx);
+                    cout <<"\nFirma: " << MAC<<"\n";  
+                 
+                    ubicacion = direccion + documento;
+                    file.open(ubicacion);
+                    file << MAC;
+                    file.close();
+
+                }//Opcion 8 Verificacion firma de documento.
+                else if (eleccion == 8) {
+                unsigned char client_pk[crypto_kx_PUBLICKEYBYTES], client_sk[crypto_kx_SECRETKEYBYTES];
+                unsigned char client_rx[crypto_kx_SESSIONKEYBYTES], client_tx[crypto_kx_SESSIONKEYBYTES];
+                crypto_kx_keypair(client_pk, client_sk);
+
+                unsigned char server_pk[crypto_kx_PUBLICKEYBYTES], server_sk[crypto_kx_SECRETKEYBYTES];
+                unsigned char server_rx[crypto_kx_SESSIONKEYBYTES], server_tx[crypto_kx_SESSIONKEYBYTES];
+                crypto_kx_keypair(server_pk, server_sk);
+
+                if (crypto_kx_client_session_keys(client_rx, client_tx, client_pk, client_sk, server_pk) != 0) {
+                    exit(1);
+                }
+
+                if (crypto_kx_client_session_keys(server_rx, server_tx, server_pk, server_sk, client_pk) != 0) {
+                    exit(1);
+                }
+                    unsigned char MACr[crypto_auth_hmacsha512_BYTES];
+                    unsigned char MACserver[crypto_auth_hmacsha512_BYTES];                    
+                    unsigned char IDSERVER[(sizeof(texto)+14)] = "Luis@iteso.mx";
+                    for (int i = 14; i < (sizeof(texto)+14); i++) {
+                        ID[i] = reto[i - 14];
+                    }
+                    crypto_auth_hmacsha512(MACserver, IDSERVER, (sizeof(texto)+14), client_tx);
+                    int result = crypto_auth_hmacsha512_verify(MACr, MACserver, crypto_auth_hmacsha512_BYTES, server_rx);
+                    std::cout << "---" << std::endl;
+                    
+                    std::cout << std::endl;
+                    
+                    if (result != 1) {
+                        cout << "\nLa firma coincide, documento no alterado\n";
+                    }
+                    else {
+                        cout << "\n La firma no coincide, documento alterado\n ";
+                    }
+                }
+                else {
+                    cout << "\n\n!!Que tenga un buen dia\n\n";
+                }
+            }
+        }
+        else {
+            printf("\nContrasena incorrecta");
+            return -1;
+        }
+    }
+    else {
+        printf("\nUsuario incorrecto");
+        return -1;
+    }
+
+}
